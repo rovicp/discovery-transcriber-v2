@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video/Audio Transcriber — Triad Legal, PLLC</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.card { background: #fff; border-radius: 10px; padding: 36px; max-width: 660px; width: 100%; box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+.firm-name { font-size: 15px; font-weight: 700; color: #202124; margin-bottom: 14px; }
+h1 { font-size: 22px; color: #202124; margin-bottom: 8px; }
+.sub { font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.6; }
+.info { background: #e8f0fe; border-radius: 6px; padding: 12px 14px; font-size: 13px; color: #1a73e8; margin-bottom: 20px; line-height: 1.6; }
+label.url-label { font-size: 13px; font-weight: 600; color: #444; display: block; margin-bottom: 6px; }
+input[type=text] { width: 100%; padding: 11px 14px; font-size: 14px; border: 1.5px solid #ddd; border-radius: 6px; margin-bottom: 16px; outline: none; }
+input[type=text]:focus { border-color: #1a73e8; }
+.btn { background: #1a73e8; color: #fff; border: none; padding: 13px 24px; font-size: 15px; font-weight: 600; border-radius: 6px; cursor: pointer; width: 100%; }
+.btn:hover { background: #1558b0; } .btn:disabled { background: #aaa; cursor: not-allowed; }
+.btn-sm { background: #f5f5f5; color: #444; border: 1px solid #ddd; font-size: 13px; font-weight: 600; padding: 11px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 8px; }
+.err { color: #c5221f; font-size: 13px; margin-top: 8px; display: none; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.status-panel { display: none; }
+.phase-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 14px; background: #e8f0fe; color: #1a73e8; }
+.phase-complete { background: #e6f4ea; color: #137333; } .phase-error { background: #fce8e6; color: #c5221f; }
+.progress-wrap { background: #f0f0f0; border-radius: 20px; height: 10px; margin-bottom: 14px; overflow: hidden; }
+.progress-bar { height: 10px; border-radius: 20px; background: #1a73e8; transition: width .6s ease; width: 0%; }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.stat { background: #f8f9fa; border-radius: 8px; padding: 10px 12px; text-align: center; }
+.stat-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+.stat-value { font-size: 18px; font-weight: 700; color: #202124; }
+.logbox { background: #f8f9fa; border-radius: 6px; padding: 12px; font-size: 12px; font-family: monospace; color: #444; max-height: 200px; overflow-y: auto; line-height: 1.7; margin-bottom: 14px; }
+.links-box { background: #e6f4ea; border-radius: 8px; padding: 14px; font-size: 13px; color: #137333; margin-bottom: 12px; }
+.links-box strong { display: block; margin-bottom: 8px; }
+.links-box a { color: #137333; display: block; margin-top: 6px; font-weight: 600; text-decoration: none; }
+.links-box a:hover { text-decoration: underline; }
+.err-box { background: #fce8e6; border-radius: 8px; padding: 14px; font-size: 13px; color: #c5221f; margin-bottom: 12px; }
+.foot { font-size: 11px; color: #999; margin-top: 14px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="firm-name">Triad Legal, PLLC.</div>
+  <h1>Video/Audio Transcriber</h1>
+  <p class="sub">Paste a Google Drive folder link. Every audio and video file in it (and its subfolders) is transcribed in full — one verbatim Google Doc per file.</p>
+  <div class="info">
+    A <strong>Video/Audio Transcripts</strong> subfolder is created inside the folder you paste, and each transcript Google Doc is saved there.
+  </div>
+
+  <div id="input-section">
+    <label class="url-label" for="url">Google Drive Folder Link</label>
+    <input type="text" id="url" placeholder="https://drive.google.com/drive/folders/...">
+    <div class="err" id="err"></div>
+    <button class="btn" id="btn" onclick="go()">Transcribe</button>
+  </div>
+
+  <div class="status-panel" id="sp">
+    <div id="badge" class="phase-badge">Starting…</div>
+    <div class="progress-wrap"><div class="progress-bar" id="pb"></div></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Media Files</div><div class="stat-value" id="s-total">—</div></div>
+      <div class="stat"><div class="stat-label">Transcribed</div><div class="stat-value" id="s-proc">—</div></div>
+      <div class="stat"><div class="stat-label">Progress</div><div class="stat-value" id="s-pct">—</div></div>
+    </div>
+    <div class="logbox" id="logbox">Starting…</div>
+    <div id="links"></div>
+    <button class="btn-sm" onclick="resetForm()">Analyze Another Folder</button>
+  </div>
+
+  <div class="foot">AI transcripts and analysis may contain errors — verify against the recordings before relying on them in court.</div>
+</div>
+
+<script>
+let timer = null, currentJobId = null;
+const RUNNING = ['STARTING', 'RUNNING'];
+
+async function go() {
+  const url = document.getElementById('url').value.trim();
+  const errEl = document.getElementById('err');
+  errEl.style.display = 'none';
+  if (!url) { errEl.textContent = 'Please paste a Google Drive folder link.'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Starting…';
+  try {
+    const res = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folderUrl: url }) });
+    const data = await res.json();
+    if (data.error) { errEl.textContent = 'Error: ' + data.error; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Transcribe & Analyze'; return; }
+    currentJobId = data.jobId;
+    document.getElementById('input-section').style.display = 'none';
+    document.getElementById('sp').style.display = 'block';
+    poll(); timer = setInterval(poll, 3000);
+  } catch (e) {
+    errEl.textContent = 'Error: ' + e.message; errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Transcribe & Analyze';
+  }
+}
+
+async function poll() {
+  if (!currentJobId) return;
+  try { render(await (await fetch('/api/status/' + currentJobId)).json()); } catch (e) { /* keep polling */ }
+}
+
+function render(d) {
+  if (!d) return;
+  const badge = document.getElementById('badge');
+  badge.textContent = d.phase || d.status;
+  badge.className = 'phase-badge' + (d.status === 'COMPLETE' ? ' phase-complete' : '') + (d.status === 'ERROR' ? ' phase-error' : '');
+
+  const total = d.progress?.total || 0, processed = d.progress?.processed || 0;
+  const pct = total > 0 ? Math.round(processed / total * 100) : (RUNNING.includes(d.status) ? 3 : 0);
+  document.getElementById('pb').style.width = pct + '%';
+  document.getElementById('s-total').textContent = total || '—';
+  document.getElementById('s-proc').textContent = total ? processed : '—';
+  document.getElementById('s-pct').textContent = total > 0 ? pct + '%' : '—';
+
+  if (d.log && d.log.length) document.getElementById('logbox').innerHTML = [...d.log].reverse().map(l => l + '<br>').join('');
+
+  if (d.status === 'COMPLETE' && d.outputs) {
+    clearInterval(timer);
+    let html = '<div class="links-box"><strong>✅ Done!</strong>';
+    if (d.outputs.transcriptsFolder) html += `<a href="${d.outputs.transcriptsFolder}" target="_blank">📂 Video/Audio Transcripts folder</a>`;
+    for (const t of (d.outputs.transcripts || [])) {
+      html += `<a href="${t.url}" target="_blank">📄 ${t.name}</a>`;
+    }
+    html += '</div>';
+    document.getElementById('links').innerHTML = html;
+  }
+  if (d.status === 'ERROR') {
+    clearInterval(timer);
+    document.getElementById('links').innerHTML = `<div class="err-box">⚠ Error: ${d.error || 'See the log above.'}</div>`;
+  }
+}
+
+function resetForm() {
+  clearInterval(timer); currentJobId = null;
+  document.getElementById('input-section').style.display = 'block';
+  document.getElementById('sp').style.display = 'none';
+  document.getElementById('links').innerHTML = '';
+  document.getElementById('url').value = '';
+  document.getElementById('err').style.display = 'none';
+  document.getElementById('btn').disabled = false;
+  document.getElementById('btn').textContent = 'Transcribe & Analyze';
+}
+</script>
+</body>
+</html>

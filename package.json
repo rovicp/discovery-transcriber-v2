@@ -1,0 +1,25 @@
+{
+  "name": "discovery-transcriber-v2",
+  "version": "2.0.0",
+  "description": "ASR-based full-length audio/video transcription for Triad Legal, PLLC. Crawls a Google Drive folder, transcribes every file via a dedicated ASR (Speechmatics/Deepgram), adds periodic Gemini scene descriptions for video, assigns real speaker names with Claude, and writes one verbatim Google Doc per file into a 'Video/Audio Transcripts' subfolder.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --max-old-space-size=1024 server.js",
+    "dev": "node --max-old-space-size=1024 server.js",
+    "check": "for f in server.js lib/*.js lib/transcribe/*.js lib/asr/*.js lib/visual/*.js lib/refine/*.js lib/pipeline/*.js jobs/*.js; do node --check \"$f\" || exit 1; done; echo 'all files OK'",
+    "test": "node tests/pipeline.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@google/generative-ai": "^0.21.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "form-data": "^4.0.0",
+    "googleapis": "^140.0.0",
+    "uuid": "^9.0.0"
+  }
+}

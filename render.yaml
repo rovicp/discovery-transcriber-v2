@@ -1,0 +1,38 @@
+# Render Blueprint: a single web service. Media is streamed from Google Drive
+# through ffmpeg (only a small extracted-audio track + one short clip touch disk),
+# so no database, queue, or persistent disk is required — and no media file is ever
+# loaded into RAM, at any size.
+services:
+  - type: web
+    name: discovery-transcriber-v2
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard          # CPU/RAM for ffmpeg audio extraction + long jobs
+    healthCheckPath: /health
+    envVars:
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: SPEECHMATICS_API_KEY
+        sync: false
+      - key: ASR_PROVIDER
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CLAUDE_MODEL
+        value: claude-sonnet-4-6
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: VISUAL_INTERVAL_SECONDS
+        value: "600"
+      - key: VISUAL_CLIP_SECONDS
+        value: "10"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
