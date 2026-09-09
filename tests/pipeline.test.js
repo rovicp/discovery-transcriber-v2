@@ -3,7 +3,7 @@ const { normalize: dgNormalize } = require('../lib/asr/deepgram');
 const { normalize: smNormalize } = require('../lib/asr/speechmatics');
 const { computeCheckpoints } = require('../lib/visual');
 const { mergeByTime, render } = require('../lib/pipeline');
-const { distinctLabels, extractJsonObject, looksValid, applyMap } = require('../lib/refine');
+const { distinctLabels, extractJsonObject, looksValid, applyMap, enforceUnique } = require('../lib/refine');
 
 let pass = 0;
 const check = (name, cond) => { console.log((cond ? 'PASS ' : 'FAIL ') + name); if (cond) pass++; else process.exitCode = 1; };
@@ -120,6 +120,23 @@ const check = (name, cond) => { console.log((cond ? 'PASS ' : 'FAIL ') + name); 
   check('refine: labels replaced', items[0].speaker === 'Jason Griner' && items[2].speaker === 'Officer Taylor');
   check('refine: TEXT unchanged (verbatim)', before === after);
   check('refine: visual line untouched', items[1].kind === 'visual' && items[1].body === '[Scene …]');
+}
+
+// 8. enforceUnique — never merge two voices onto one name; unnamed stay generic.
+{
+  const labels = ['S1', 'S2', 'S3'];
+  // Claude tried to call both S2 and S3 "Officer"; S1 got a real name.
+  const cleaned = enforceUnique(labels, { S1: 'Jason Griner', S2: 'Officer', S3: 'Officer' });
+  check('unique: distinct real name kept', cleaned.S1 === 'Jason Griner');
+  check('unique: first duplicate kept', cleaned.S2 === 'Officer');
+  check('unique: second duplicate dropped (stays generic)', !('S3' in cleaned));
+
+  const items = [
+    { t: 0, kind: 'dialogue', speaker: 'S2', text: 'a' },
+    { t: 1, kind: 'dialogue', speaker: 'S3', text: 'b' },
+  ];
+  applyMap(items, cleaned);
+  check('unique: S3 remains its generic label after apply', items[1].speaker === 'S3');
 }
 
 console.log(`\n${pass} checks passed${process.exitCode ? ' — SOME FAILED' : ' — ALL PASSED'}`);
