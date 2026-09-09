@@ -60,14 +60,20 @@ module.exports = async function transcriber(job, addLog) {
 
 // ── Transcript Google Doc formatter (matches the sample PDF) ─────────────────
 function isTimestampLine(line) { return TIMESTAMP_RE.test(line.trim()); }
-function isVisualLine(line) { return isTimestampLine(line) && /\[(visual:|scene\b)/i.test(line); }
+// A visual observation paragraph: starts with "[Scene" / "[Visual" (no leading
+// timecode), or the legacy timestamped form.
+function isVisualLine(line) {
+  const t = line.trim();
+  if (/^\[(scene|visual)\b/i.test(t)) return true;
+  return isTimestampLine(t) && /\[(visual|scene)\b/i.test(t);
+}
 function isSectionHeader(line) {
   const t = line.trim();
   if (!t) return false;
   if (isTimestampLine(t)) return false;
   if (isHeaderLine(t)) return false;
   if (/^[-─=*_]{3,}/.test(t)) return false;
-  if (/^\[visual:/i.test(t)) return false;
+  if (/^\[(scene|visual)\b/i.test(t)) return false;
   // Backstop: a stray bare line that reads like a sentence (long, ends with
   // sentence punctuation, or starts lowercase) is body text, not a title —
   // never bold it. Real section titles are no longer emitted, so this only
@@ -119,30 +125,29 @@ async function createTranscriptDoc(file, transcript, durationSeconds, flaggedReg
       style(s, index - 1, { fontSize: 10, color: gray });
       continue;
     }
-    if (!headerBlockDone && (isTimestampLine(line.trim()) || isSectionHeader(line.trim()))) {
+    if (!headerBlockDone && (isTimestampLine(line.trim()) || isVisualLine(line.trim()) || isSectionHeader(line.trim()))) {
       headerBlockDone = true;
       ins('\n');
     }
 
+    // Each entry is its own paragraph followed by a blank line for readability.
     if (isVisualLine(line.trim())) {
-      s = ins(line + '\n');
-      const dashIdx = line.indexOf('-');
-      if (dashIdx > 0) style(s, s + dashIdx + 1, { bold: true });
-      style(s, index - 1, { italic: true });
+      s = ins(line + '\n\n');
+      style(s, s + line.length, { italic: true });
       continue;
     }
     if (isTimestampLine(line.trim())) {
-      s = ins(line + '\n');
+      s = ins(line + '\n\n');
       const dashIdx = line.indexOf('-');
       if (dashIdx > 0) style(s, s + dashIdx + 1, { bold: true });
       continue;
     }
     if (isSectionHeader(line.trim())) {
-      s = ins(line + '\n');
-      style(s, index - 1, { bold: true });
+      s = ins(line + '\n\n');
+      style(s, s + line.length, { bold: true });
       continue;
     }
-    ins(line + '\n');
+    ins(line + '\n\n');
   }
 
   const CHUNK = 500;

@@ -82,14 +82,24 @@ const check = (name, cond) => { console.log((cond ? 'PASS ' : 'FAIL ') + name); 
   check('merge: visual precedes dialogue at equal t', merged[1].kind === 'visual' && merged[2].kind === 'dialogue');
 }
 
-// 6. Render — exact line formats.
+// 6. Render — dialogue keeps H:MM:SS; visual has NO leading timecode.
 {
   const out = render([
     { t: 0, kind: 'dialogue', speaker: 'Officer Taylor', text: 'Step out.' },
-    { t: 600, kind: 'visual', body: '[Scene at 10:00 — roadside at night.]' },
+    { t: 600, kind: 'visual', body: '[Scene at 0:10:00 — roadside at night.]' },
   ]);
   check('render: dialogue line format', out.includes('0:00:00 - Officer Taylor: Step out.'));
-  check('render: visual line format', out.includes('0:10:00 - [Scene at 10:00 — roadside at night.]'));
+  check('render: visual line has no leading timecode',
+    /\n\[Scene at 0:10:00 — roadside at night\.\]/.test(out) && !/\d:\d\d:\d\d - \[Scene/.test(out));
+}
+
+// 6b. Visual prompt — full on first checkpoint, delta-aware when given a previous.
+{
+  const { buildPrompt } = require('../lib/visual/gemini');
+  check('visual prompt: first checkpoint is full', /FIRST checkpoint/.test(buildPrompt(10, '')));
+  const p = buildPrompt(10, 'A room with two officers.');
+  check('visual prompt: carries previous + asks for update',
+    /A room with two officers\./.test(p) && /UPDATE/i.test(p) && /unchanged/i.test(p));
 }
 
 // 7. Refine helpers + verbatim-safe apply.
