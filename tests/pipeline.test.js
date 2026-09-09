@@ -3,7 +3,7 @@ const { normalize: dgNormalize } = require('../lib/asr/deepgram');
 const { normalize: smNormalize } = require('../lib/asr/speechmatics');
 const { computeCheckpoints } = require('../lib/visual');
 const { mergeByTime, render } = require('../lib/pipeline');
-const { distinctLabels, extractJsonObject, looksValid, applyMap, enforceUnique } = require('../lib/refine');
+const { distinctLabels, extractJsonObject, looksValid, applyMap, enforceUnique, isConcreteName } = require('../lib/refine');
 
 let pass = 0;
 const check = (name, cond) => { console.log((cond ? 'PASS ' : 'FAIL ') + name); if (cond) pass++; else process.exitCode = 1; };
@@ -137,6 +137,17 @@ const check = (name, cond) => { console.log((cond ? 'PASS ' : 'FAIL ') + name); 
   ];
   applyMap(items, cleaned);
   check('unique: S3 remains its generic label after apply', items[1].speaker === 'S3');
+}
+
+// 9. isConcreteName — only an exact personal name qualifies; bare roles do not.
+{
+  check('concrete: full name', isConcreteName('Jason Griner'));
+  check('concrete: first name only', isConcreteName('Nadia'));
+  check('concrete: title + surname', isConcreteName('Officer Taylor'));
+  check('concrete: bare role rejected', !isConcreteName('Officer'));
+  check('concrete: "the driver" rejected', !isConcreteName('the driver'));
+  check('concrete: "Suspect" rejected', !isConcreteName('Suspect'));
+  check('concrete: "sir" rejected', !isConcreteName('sir'));
 }
 
 console.log(`\n${pass} checks passed${process.exitCode ? ' — SOME FAILED' : ' — ALL PASSED'}`);
