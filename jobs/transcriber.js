@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { createDoc, batchUpdate, getDocUrl } = require('../lib/docs');
+const { findFileByName } = require('../lib/drive');
 const { transcribeMedia } = require('../lib/pipeline');
 const { TIMESTAMP_RE, isHeaderLine, formatTs } = require('../lib/transcribe/util');
 
@@ -27,6 +28,25 @@ module.exports = async function transcriber(job, addLog) {
 
   for (let i = 0; i < media.length; i++) {
     const file = media[i];
+    const baseName = file.name.replace(/\.[^/.]+$/, '');
+
+    // Resume support: if a transcript doc for this file already exists, skip it so a
+    // re-run continues where a previous run stopped (e.g. after an instance restart).
+    // Delete the doc in the folder to force a re-transcription.
+    try {
+      const existing = await findFileByName(job.transcriptsFolderId, `[Transcript] ${baseName}`);
+      if (existing) {
+        addLog(`(${i + 1}/${media.length}) ↷ ${file.name}: transcript already exists — skipping (delete it to re-run).`);
+        file.transcriptStatus = 'SKIPPED';
+        file.transcriptDocId = existing.id;
+        file.transcriptDocUrl = getDocUrl(existing.id);
+        job.transcripts.push({ name: file.name, url: file.transcriptDocUrl });
+        ok++;
+        job.progress.processed = ok + failed;
+        continue;
+      }
+    } catch (_) { /* existence check failed — fall through and transcribe */ }
+
     addLog(`Transcribing (${i + 1}/${media.length}): ${file.name} (${file.sizeFormatted || ''})`);
     const workDir = path.join(TMP, `${job.id}_${i}`);
 
